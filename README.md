@@ -12,21 +12,21 @@ License: GPLv2
 
 ## Установка
 
-1. Скопировать файлы в /src/
-2. Добавить в app/AppKernel.php строку: 
+* Скопировать файлы в /src/
+* Добавить в app/AppKernel.php строку: 
 ```
 new Ulogin\AuthBundle\UloginAuthBundle(),
 ```
-3. Добавить в app/autoload.php строку: 
+* Добавить в app/autoload.php строку: 
 ```
 $loader->add('Ulogin', __DIR__.'/../src');
 ```
-4. Добавить в app/config/routing.yml строки:
+* Добавить в app/config/routing.yml строки:
 ```
 ulogin:
        resource: "@UloginAuthBundle/Resources/config/routing.xml"
 ```
-5. В своем .twig шаблоне добавить вызов:
+* В своем .twig шаблоне добавить вызов:
 ```
     {{ include('UloginAuthBundle::widget.html.twig', { "uLoginID": "123456", "label": "Войти с помощью:" }) }}
 ```
@@ -34,7 +34,7 @@ ulogin:
     `uLoginID` - ID виджета из личного кабинета на сайте http://ulogin.ru
     `label` - текст около виджета. Необязательный параметр. Может быть передана пустая строка, тогда надписи не будет.
     Удобнее всего этим вызовом заменить отображение социальных иконок Sylius в файле: `src/Sylius/Bundle/WebBundle/Resources/views/Frontend/User/login.html.twig`
-6. Выполнить консольную команду:
+* Выполнить консольную команду:
 ```
  app/console doctrine:schema:update --force --env=prod
 ```
