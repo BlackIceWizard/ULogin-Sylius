@@ -13,6 +13,7 @@ License: GPLv2
 ## Установка
 
 1) Скопировать файлы в /src/
+
 2) Добавить в app/AppKernel.php строку: 
 ```
 new Ulogin\AuthBundle\UloginAuthBundle(),
