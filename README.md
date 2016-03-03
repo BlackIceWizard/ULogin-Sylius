@@ -27,9 +27,7 @@ ulogin:
        resource: "@UloginAuthBundle/Resources/config/routing.xml"
 ```
 * В своем .twig шаблоне добавить вызов:
-```
-    {{ include('UloginAuthBundle::widget.html.twig', { "uLoginID": "123456", "label": "Войти с помощью:" }) }}
-```
+    `{{ include('UloginAuthBundle::widget.html.twig', { "uLoginID": "123456", "label": "Войти с помощью:" }) }}`
     где 
     `uLoginID` - ID виджета из личного кабинета на сайте http://ulogin.ru
     `label` - текст около виджета. Необязательный параметр. Может быть передана пустая строка, тогда надписи не будет.
