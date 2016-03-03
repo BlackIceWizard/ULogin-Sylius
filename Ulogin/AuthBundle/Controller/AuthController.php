@@ -1,13 +1,11 @@
 <?php
 namespace Ulogin\AuthBundle\Controller;
 
-use Doctrine\Common\Persistence\ObjectManager;
-use FOS\UserBundle\Model\UserInterface;
+use Sylius\Component\User\Model\CustomerInterface;
+use Sylius\Component\User\Model\UserInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Symfony\Component\Security\Core\Exception\AccountStatusException;
 use Ulogin\AuthBundle\Entity\UloginUser;
 
@@ -33,126 +31,78 @@ class AuthController extends Controller
         if(!empty($userByIdentity)){
 
             //получаем связанного с данной соцсетью юзера
-            $user = $this->container->get('fos_user.user_manager')->findUserBy(array('id'=>$userByIdentity->getUserId()));
+            /** @var UserInterface $user */
+            $user = $this->container->get('sylius.repository.user')->find($userByIdentity->getUserId());
             //если такой юзер есть - авторизуем его
 
-            //если поддерживается photo у юзера
-            if(is_callable(array($user,'setPhoto')) && is_callable(array($user,'getPhoto'))){
-                if($file = $this->saveFile($data)) {
-                    $user->setPhoto($file);
-                    $em = $this->getDoctrine()->getManager();
-                    $em->persist($user);
-                    $em->flush();
-                }
-            }
-
             if(!empty($user)){
-
-                try {
-                    $this->container->get('fos_user.security.login_manager')->loginUser(
-                        $this->container->getParameter('fos_user.firewall_name'),
-                        $user,
-                        $response);
-                    return $this->container->get($this->container->getParameter('ulogin_auth.success_handler'))
-                        ->onAuthenticationSuccess($request, $this->container->get('security.context')->getToken());
-                } catch (AccountStatusException $ex) {
-                    // We simply do not authenticate users which do not pass the user
-                    // checker (not enabled, expired, etc.).
-                }
-
+                $this->authenticateUser($user);
             }
 
         } else {
-
-            $user = $this->container->get('fos_user.user_manager')->findUserByEmail($data['email']);
+            /** @var UserInterface $user */
+            $user = $this->container->get('sylius.repository.user')->findOneByEmail($data['email']);
 
             //если в системе уже зарегистрирован юзер с таким email-адресом
             if(!empty($user)){
 
-                $uloginUser = new UloginUser();
-                $uloginUser->setIdentity($data['identity']);
-                $uloginUser->setNetwork($data['network']);
-                $uloginUser->setUserId($user->getId());
+                $ULoginUser = new UloginUser();
+                $ULoginUser->setIdentity($data['identity']);
+                $ULoginUser->setNetwork($data['network']);
+                $ULoginUser->setUserId($user->getId());
 
                 $em = $this->getDoctrine()->getManager();
 
-                //если поддерживается photo у юзера
-                if(is_callable(array($user,'setPhoto')) && is_callable(array($user,'getPhoto'))){
-                    if($file = $this->saveFile($data)) {
-                        $user->setPhoto($file);
-                        $em->persist($user);
-                    }
-                }
-
-                $em->persist($uloginUser);
+                $em->persist($ULoginUser);
                 $em->flush();
 
-                $this->authenticateUser($user,$response);
+                $this->authenticateUser($user);
 
-            //если юзер с данным email еще не зарегистрирован
+                //если юзер с данным email еще не зарегистрирован
             } else {
 
                 $username = $this->generateNickname($data['first_name'], $data['last_name'], $data['nickname']);
 
-                $user = $this->container->get('fos_user.user_manager')->createUser();
+                $userFactory = $this->container->get('sylius.factory.user');
+                $customerFactory = $this->container->get('sylius.factory.customer');
+
+                /** @var UserInterface $user */
+                $user = $userFactory->createNew();
+                /** @var CustomerInterface $customer */
+                $customer = $customerFactory->createNew();
+
+                $userManager = $this->get('sylius.manager.user');
+
+                $user->setCustomer($customer);
+
+                $customer->setFirstname($data['first_name']);
+                $customer->setLastname($data['last_name']);
+
                 $user->setUsername($username);
                 $user->setEmail($data['email']);
                 $user->setPlainPassword(md5($this->container->getParameter('ulogin_auth.secret_key').$data['identity'])); //пароль - md5(секрет_кей+identity)
                 $user->setEnabled(true);
-                $user->setSuperAdmin(false);
-                $this->container->get('fos_user.user_manager')->updateUser($user);
 
-                $this->authenticateUser($user,$response);
+                $userManager->persist($user);
+                $userManager->flush();
+
+                $this->authenticateUser($user);
             }
-
         }
 
         return $response;
-    }
-
-    private function saveFile($data = array())
-    {
-        $root_path = $this->get('kernel')->getRootDir();
-        $file_url = isset($data['photo_big']) ? $data['photo_big'] : (isset($data['photo']) ? $data['photo'] : false);
-        $q = isset($file_url) ? true : false;
-
-        //directory to import to
-        $relativePath = $this->container->getParameter('ulogin_auth.photo_directory');
-        $avatar_dir = $root_path . '/../web' . $relativePath;
-        if($file_url && !file_exists($avatar_dir)) {
-            mkdir($avatar_dir);
-        }
-
-        if($file_url) {
-            $tmp = explode('.', $file_url);
-            $ext = array_pop($tmp); // расширение
-            $new_name = md5(rand() . time()) . '.' . $ext; // новое имя с расширением
-            $full_path = $avatar_dir . $new_name; // полный путь с новым именем и расширением
-
-            $tmp = $this->getResponse($file_url);
-            if($tmp) {
-                if(file_put_contents($full_path, $this->getResponse($file_url))){
-                    return $relativePath.$new_name;
-                }
-            }
-        }
-
-        return false;
     }
 
     /**
      * Authenticate a user with Symfony Security
      *
      * @param UserInterface        $user
-     * @param \Symfony\Component\HttpFoundation\Response $response
      */
-    protected function authenticateUser(UserInterface $user, Response $response)
+    protected function authenticateUser(UserInterface $user)
     {
         try {
-            $this->container->get('fos_user.security.login_manager')->loginUser(
-                $this->container->getParameter('fos_user.firewall_name'),
-                $user,
-                $response);
+            $this->container->get('sylius.security.user_login')->login(
+                $user);
         } catch (AccountStatusException $ex) {
 
         }
@@ -177,7 +127,7 @@ class AuthController extends Controller
 
     private function userExist($nickname)
     {
-        return $this->container->get('fos_user.user_manager')->findUserByUsername($nickname);
+        return $this->container->get('sylius.repository.user')->findOneByUsername($nickname);
     }
 
     /**
