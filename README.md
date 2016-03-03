@@ -12,31 +12,36 @@ License: GPLv2
 
 ## Установка
 
-* Скопировать файлы в /src/
-* Добавить в app/AppKernel.php строку: 
+1) Скопировать файлы в /src/
+2) Добавить в app/AppKernel.php строку: 
 ```
 new Ulogin\AuthBundle\UloginAuthBundle(),
 ```
-* Добавить в app/autoload.php строку: 
+3) Добавить в app/autoload.php строку: 
 ```
 $loader->add('Ulogin', __DIR__.'/../src');
 ```
-* Добавить в app/config/routing.yml строки:
+4) Добавить в app/config/routing.yml строки:
 ```
 ulogin:
        resource: "@UloginAuthBundle/Resources/config/routing.xml"
 ```
-* В своем .twig шаблоне добавить вызов:
-    `{{ include('UloginAuthBundle::widget.html.twig', { "uLoginID": "123456", "label": "Войти с помощью:" }) }}`
-    где 
-    `uLoginID` - ID виджета из личного кабинета на сайте http://ulogin.ru
-    `label` - текст около виджета. Необязательный параметр. Может быть передана пустая строка, тогда надписи не будет.
-    Удобнее всего этим вызовом заменить отображение социальных иконок Sylius в файле: `src/Sylius/Bundle/WebBundle/Resources/views/Frontend/User/login.html.twig`
-* Выполнить консольную команду:
+5) В своем .twig шаблоне добавить вызов:
+```
+    {{ include('UloginAuthBundle::widget.html.twig', { "uLoginID": "123456", "label": "Войти с помощью:" }) }}
+```
+
+где 
+`uLoginID` - ID виджета из личного кабинета на сайте http://ulogin.ru
+`label` - текст около виджета. Необязательный параметр. Может быть передана пустая строка, тогда надписи не будет.
+Удобнее всего этим вызовом заменить отображение социальных иконок Sylius в файле: `src/Sylius/Bundle/WebBundle/Resources/views/Frontend/User/login.html.twig`
+
+6) Выполнить консольную команду:
 ```
  app/console doctrine:schema:update --force --env=prod
 ```
-    необходимо, чтобы создать сводную таблицу `UloginUser` в базе данных
+
+это необходимо, чтобы создать сводную таблицу `UloginUser` в базе данных
 
 
 
